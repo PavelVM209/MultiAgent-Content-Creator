@@ -29,7 +29,6 @@ git branch -M main
 git push -u origin main
 ```
 
-
 ---
 
 ## 🛠️ Решение 2: Personal Access Token
