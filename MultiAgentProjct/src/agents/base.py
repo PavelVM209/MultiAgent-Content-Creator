@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import Any, Dict, Optional
 
-from models.agents import (
+from src.models.agents import (
     AgentConfig, 
     AgentResult, 
     AgentError, 

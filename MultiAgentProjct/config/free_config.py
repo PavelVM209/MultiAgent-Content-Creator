@@ -2,7 +2,7 @@
 Конфигурация для бесплатной версии мультиагентной системы
 """
 
-from models.agents import AgentConfig
+from src.models.agents import AgentConfig
 from typing import Dict, Any
 
 
