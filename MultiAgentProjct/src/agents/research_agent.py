@@ -173,15 +173,27 @@ class ResearchAgent(BaseAgent):
     async def _perform_search(self, topic: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Выполнение поиска информации"""
         max_results = self.config.custom_params.get("max_results", 10)
+        use_free_search = self.config.custom_params.get("use_free_search", True)
         
-        # Для демонстрации создаем симулированные результаты поиска
-        # В реальной системе здесь были бы вызовы к поисковым API
-        mock_results = await self._generate_mock_search_results(topic, max_results)
+        results = []
         
-        # Если доступны реальные API ключи, можно добавить реальный поиск
-        # real_results = await self._real_web_search(topic, max_results)
+        # Сначала пробуем бесплатный поиск через DuckDuckGo
+        if use_free_search:
+            try:
+                free_results = await self._free_duckduckgo_search(topic, max_results)
+                if free_results:
+                    results.extend(free_results)
+                    self.logger.info(f"Found {len(free_results)} results via DuckDuckGo")
+            except Exception as e:
+                self.logger.warning(f"Free search failed: {e}")
         
-        return mock_results
+        # Если бесплатный поиск не дал результатов, используем mock
+        if not results:
+            mock_results = await self._generate_mock_search_results(topic, max_results)
+            results.extend(mock_results)
+            self.logger.info(f"Used mock search results: {len(mock_results)} items")
+        
+        return results
     
     async def _generate_mock_search_results(self, topic: str, max_results: int) -> List[Dict[str, Any]]:
         """Генерация симулированных результатов поиска"""
@@ -419,6 +431,133 @@ class ResearchAgent(BaseAgent):
         factors.append(content_factor)
         
         return sum(factors) / len(factors)
+    
+    async def _free_duckduckgo_search(self, topic: str, max_results: int) -> List[Dict[str, Any]]:
+        """Бесплатный поиск через DuckDuckGo Instant Answer API"""
+        try:
+            # DuckDuckGo Instant Answer API
+            ddg_url = "https://api.duckduckgo.com/"
+            params = {
+                'q': topic,
+                'format': 'json',
+                'no_html': 1,
+                'skip_disambig': 1
+            }
+            
+            if self.session is None:
+                self.session = aiohttp.ClientSession()
+            
+            async with self.session.get(ddg_url, params=params, timeout=30) as response:
+                if response.status != 200:
+                    return []
+                
+                data = await response.json()
+                results = []
+                
+                # Извлекаем результаты из ответа DuckDuckGo
+                if 'Results' in data:
+                    for result in data['Results'][:max_results]:
+                        results.append({
+                            'title': result.get('Text', ''),
+                            'snippet': result.get('Text', ''),
+                            'url': result.get('FirstURL', ''),
+                            'domain': self._extract_domain(result.get('FirstURL', '')),
+                            'relevance_score': 0.8,
+                            'published_date': '2024-01-01',
+                            'content_type': 'article',
+                            'language': 'ru',
+                            'source': 'duckduckgo'
+                        })
+                
+                # Добавляем Related Topics если есть
+                if 'RelatedTopics' in data:
+                    for topic_data in data['RelatedTopics'][:max_results//2]:
+                        if isinstance(topic_data, dict) and 'Text' in topic_data:
+                            results.append({
+                                'title': topic_data.get('Text', ''),
+                                'snippet': topic_data.get('Text', ''),
+                                'url': topic_data.get('FirstURL', ''),
+                                'domain': self._extract_domain(topic_data.get('FirstURL', '')),
+                                'relevance_score': 0.7,
+                                'published_date': '2024-01-01',
+                                'content_type': 'article',
+                                'language': 'ru',
+                                'source': 'duckduckgo_related'
+                            })
+                
+                # Если результатов мало, пробуем веб-скрапинг
+                if len(results) < max_results:
+                    scraped_results = await self._free_web_scraping(topic, max_results - len(results))
+                    results.extend(scraped_results)
+                
+                return results[:max_results]
+                
+        except Exception as e:
+            self.logger.error(f"DuckDuckGo search error: {e}")
+            return []
+    
+    def _extract_domain(self, url: str) -> str:
+        """Извлечение домена из URL"""
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            return parsed.netloc
+        except:
+            return "unknown"
+    
+    async def _free_web_scraping(self, topic: str, max_results: int) -> List[Dict[str, Any]]:
+        """Бесплатный веб-скрапинг для дополнения результатов"""
+        scraped_results = []
+        
+        try:
+            # Пробуем получить контент с первых результатов DuckDuckGo
+            search_urls = [
+                f"https://duckduckgo.com/html/?q={quote(topic)}",
+            ]
+            
+            for search_url in search_urls:
+                try:
+                    if self.session is None:
+                        self.session = aiohttp.ClientSession()
+                    
+                    async with self.session.get(search_url, timeout=30) as response:
+                        if response.status == 200:
+                            html = await response.text()
+                            
+                            # Простое извлечение ссылок (в реальной системе нужен BeautifulSoup)
+                            import re
+                            url_pattern = r'<a[^>]+href="([^"]+)"[^>]*>([^<]+)</a>'
+                            matches = re.findall(url_pattern, html)
+                            
+                            for url, title in matches[:max_results]:
+                                if url.startswith('/url?q='):
+                                    # Extract actual URL from Google redirect
+                                    url = url.split('/url?q=')[1].split('&')[0]
+                                
+                                if url.startswith('http') and len(title) > 10:
+                                    scraped_results.append({
+                                        'title': title.strip(),
+                                        'snippet': f"Результат поиска по теме: {topic}",
+                                        'url': url,
+                                        'domain': self._extract_domain(url),
+                                        'relevance_score': 0.6,
+                                        'published_date': '2024-01-01',
+                                        'content_type': 'article',
+                                        'language': 'ru',
+                                        'source': 'web_scraping'
+                                    })
+                            
+                            if len(scraped_results) >= max_results:
+                                break
+                                
+                except Exception as e:
+                    self.logger.warning(f"Web scraping error: {e}")
+                    continue
+                    
+        except Exception as e:
+            self.logger.error(f"Web scraping failed: {e}")
+        
+        return scraped_results[:max_results]
     
     async def cleanup(self):
         """Очистка ресурсов"""
