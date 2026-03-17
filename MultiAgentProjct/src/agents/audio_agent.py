@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from .base import BaseAgent
-from models.agents import ValidationResult, AgentConfig
+from src.models.agents import ValidationResult, AgentConfig
 
 
 class AudioAgent(BaseAgent):

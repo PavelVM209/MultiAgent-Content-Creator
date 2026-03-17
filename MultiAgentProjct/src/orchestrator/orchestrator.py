@@ -8,10 +8,10 @@ from datetime import datetime
 from logging import getLogger
 from typing import Any, Dict, List, Optional, Type
 
-from agents.base import BaseAgent
-from state_manager import StateManager, WorkflowState, AgentStep, WorkflowStatus, QualityThresholds
-from models.agents import AgentResult
-from evaluation import QualityEvaluator
+from src.agents.base import BaseAgent
+from src.state_manager import StateManager, WorkflowState, AgentStep, WorkflowStatus, QualityThresholds
+from src.models.agents import AgentResult
+from src.evaluation import QualityEvaluator
 
 
 class OrchestrationConfig:
@@ -430,7 +430,7 @@ class Orchestrator:
                     self.logger.warning(f"Step {step} failed, attempt {retry_count + 1}: {result.error.message if result.error else 'Unknown error'}")
                     
             except asyncio.TimeoutError:
-                from models.agents import AgentError
+                from src.models.agents import AgentError
                 timeout_error = AgentError(
                     agent_name=agent.__class__.__name__,
                     error_type="timeout",
@@ -447,7 +447,7 @@ class Orchestrator:
                 
             except Exception as e:
                 # Создаем правильный AgentError
-                from models.agents import AgentError
+                from src.models.agents import AgentError
                 error_obj = AgentError(
                     agent_name=agent.__class__.__name__,
                     error_type="processing_error",
@@ -470,7 +470,7 @@ class Orchestrator:
                 await asyncio.sleep(1.0 * retry_count)
         
         # Создаем правильный AgentError для финального результата
-        from models.agents import AgentError
+        from src.models.agents import AgentError
         final_error = AgentError(
             agent_name=agent.__class__.__name__,
             error_type="retry_exhausted",

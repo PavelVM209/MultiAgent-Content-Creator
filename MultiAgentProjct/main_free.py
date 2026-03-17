@@ -14,7 +14,7 @@ from datetime import datetime
 # Добавляем корень проекта в Python path
 sys.path.append(str(Path(__file__).parent))
 
-from src.orchestrator.orchestrator import IntelligentOrchestrator
+from src.orchestrator.orchestrator import Orchestrator
 from config.free_config import (
     get_free_agent_config,
     get_free_system_config,
@@ -29,7 +29,7 @@ class FreeMultiAgentSystem:
     
     def __init__(self):
         self.system_config = get_free_system_config()
-        self.orchestrator: Optional[IntelligentOrchestrator] = None
+        self.orchestrator: Optional[Orchestrator] = None
         
         # Настройка логирования
         self._setup_logging()
@@ -82,7 +82,7 @@ class FreeMultiAgentSystem:
                     self.logger.info(f"   • {rec}")
             
             # Инициализируем оркестратор с бесплатными конфигурациями
-            self.orchestrator = IntelligentOrchestrator()
+            self.orchestrator = Orchestrator()
             
             # Устанавливаем конфигурации для агентов
             await self._setup_free_agents()
@@ -184,7 +184,28 @@ class FreeMultiAgentSystem:
             }
             
             # Запускаем обработку
-            result = await self.orchestrator.process_request(request_data)
+            workflow_result = await self.orchestrator.execute_workflow(
+                input_data=request_data,
+                custom_steps=None,
+                workflow_id=f"free_workflow_{int(datetime.now().timestamp())}"
+            )
+            
+            # Конвертируем результат в ожидаемый формат
+            result = {
+                "topic": topic,
+                "success": workflow_result.success,
+                "workflow_id": workflow_result.workflow_id,
+                "final_data": workflow_result.final_data,
+                "agent_results": workflow_result.agent_results,
+                "quality_scores": workflow_result.quality_scores,
+                "total_time": workflow_result.total_time,
+                "steps_completed": workflow_result.steps_completed,
+                "total_steps": workflow_result.total_steps,
+                "rollbacks_performed": workflow_result.rollbacks_performed,
+                "completion_rate": workflow_result.completion_rate,
+                "average_quality": workflow_result.average_quality,
+                "error": workflow_result.error
+            }
             
             # Добавляем метаданные бесплатной версии
             processing_time = (datetime.now() - start_time).total_seconds()

@@ -8,7 +8,7 @@ from logging import getLogger
 from typing import Any, Dict, List, Optional, Tuple
 from enum import Enum
 
-from state_manager.models import AgentStep
+from src.state_manager.models import AgentStep
 
 
 class EvaluationMetric(Enum):
