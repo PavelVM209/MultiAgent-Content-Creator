@@ -1,0 +1,143 @@
+# Байт-код / скомпилированные файлы
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Распространенные файлы
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Виртуальное окружение
+venv/
+venv_multiagent_py311/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ОС
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Логи
+*.log
+logs/
+
+# Output файлы
+output/
+*.mp4
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Временные файлы
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Модели нейросетей (большие файлы)
+models/
+*.safetensors
+*.bin
+*.ckpt
+
+# Тестовые файлы
+test_*.py
+!test_full_workflow.py
+!test_free_integration.py
+
+# Кэш
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+#Coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+#pyenv
+.python-version
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
