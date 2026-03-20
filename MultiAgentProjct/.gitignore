@@ -75,7 +75,7 @@ temp/
 tmp/
 
 # Модели нейросетей (большие файлы)
-models/
+!/models/
 *.safetensors
 *.bin
 *.ckpt
