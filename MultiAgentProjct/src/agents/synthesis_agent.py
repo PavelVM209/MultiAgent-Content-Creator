@@ -9,6 +9,7 @@ import re
 
 from .base import BaseAgent
 from src.models.agents import ValidationResult, AgentConfig
+from src.llm import OllamaClient
 
 
 class SynthesisAgent(BaseAgent):
@@ -38,6 +39,7 @@ class SynthesisAgent(BaseAgent):
                 }
             )
         super().__init__(config)
+        self.ollama_client = OllamaClient()
     
     async def validate_input(self, data: Any) -> ValidationResult:
         """Валидация входных данных"""
@@ -223,6 +225,66 @@ class SynthesisAgent(BaseAgent):
     async def _generate_synthesis_content(self, research_data: Dict[str, Any], 
                                         explanation_data: Dict[str, Any], topic: str) -> str:
         """Генерация синтезированного контента"""
+        
+        # Пытаемся использовать Ollama если доступен
+        if self.ollama_client.is_available():
+            ollama_content = await self._generate_synthesis_with_ollama(research_data, explanation_data, topic)
+            if ollama_content:
+                self.logger.info("Сгенерирован синтез через Ollama")
+                return ollama_content
+        
+        # Fallback на шаблонную генерацию
+        self.logger.info("Используем шаблонную генерацию синтеза")
+        return await self._generate_synthesis_with_template(research_data, explanation_data, topic)
+    
+    async def _generate_synthesis_with_ollama(self, research_data: Dict[str, Any], 
+                                             explanation_data: Dict[str, Any], topic: str) -> Optional[str]:
+        """Генерация синтеза через Ollama"""
+        try:
+            research_summary = research_data.get("summary", "")
+            explanation_content = explanation_data.get("content", "")
+            research_key_points = research_data.get("key_points", [])
+            explanation_examples = explanation_data.get("examples", [])
+            
+            # Создаем промпт для Ollama
+            prompt = f"""
+Создай комплексный синтез на тему: "{topic}"
+
+Данные исследования:
+- Summary: {research_summary}
+- Ключевые точки: {', '.join(research_key_points[:3])}
+
+Данные объяснения:
+- Контент: {explanation_content[:800]}
+- Примеры: {', '.join(explanation_examples[:2])}
+
+Требования:
+1. Создай целостный синтезированный текст (400-1000 слов)
+2. Объедини исследовательские данные с объяснениями
+3. Найди связи между фактами и концепциями
+4. Структурируй: введение, анализ связей, выводы
+5. Подчеркни ценность综合体ного подхода
+
+Синтез:
+"""
+            
+            generated_text = self.ollama_client.generate(
+                prompt=prompt,
+                temperature=0.6,
+                max_tokens=1500
+            )
+            
+            if generated_text and len(generated_text) > 150:
+                return generated_text
+            
+        except Exception as e:
+            self.logger.warning(f"Ошибка при генерации синтеза через Ollama: {e}")
+        
+        return None
+    
+    async def _generate_synthesis_with_template(self, research_data: Dict[str, Any], 
+                                               explanation_data: Dict[str, Any], topic: str) -> str:
+        """Генерация синтеза через шаблоны"""
         research_summary = research_data.get("summary", "")
         explanation_content = explanation_data.get("content", "")
         research_key_points = research_data.get("key_points", [])
