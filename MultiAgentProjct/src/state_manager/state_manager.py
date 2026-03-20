@@ -192,7 +192,7 @@ class StateManager:
                 workflow_id=workflow_id,
                 input_data=input_data.copy(),
                 config=config or {},
-                quality_thresholds=quality_thresholds or QualityThresholds(),
+                quality_thresholds=quality_thresholds.dict() if quality_thresholds else QualityThresholds().dict(),
                 user_preferences=user_preferences or {}
             )
             

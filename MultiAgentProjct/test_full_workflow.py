@@ -57,7 +57,32 @@ async def test_individual_agents():
                     "research_data": {
                         "summary": "ИИ в медицине - это революционная технология",
                         "key_points": ["Диагностика", "Лечение", "Прогнозирование"],
-                        "sources": ["source1.com", "source2.com"]
+                        "sources": ["source1.com", "source2.com"],
+                        "structured_results": {
+                            "domains": {"wikipedia.org": 2, "researchgate.net": 1},
+                            "content_types": {"article": 3},
+                            "total_results": 3,
+                            "average_relevance": 0.75,
+                            "topic_coverage": {
+                                "theoretical": 0.6,
+                                "practical": 0.4,
+                                "historical": 0.2,
+                                "future": 0.8
+                            }
+                        }
+                    },
+                    # Добавляем structured_results и в корень для совместимости
+                    "structured_results": {
+                        "domains": {"wikipedia.org": 2, "researchgate.net": 1},
+                        "content_types": {"article": 3},
+                        "total_results": 3,
+                        "average_relevance": 0.75,
+                        "topic_coverage": {
+                            "theoretical": 0.6,
+                            "practical": 0.4,
+                            "historical": 0.2,
+                            "future": 0.8
+                        }
                     }
                 }
             elif agent_name == "SynthesisAgent":
@@ -65,12 +90,30 @@ async def test_individual_agents():
                 test_data = {
                     "topic": test_topic,
                     "research_data": {
+                        "topic": test_topic,  # Добавляем topic для валидации
                         "summary": "ИИ в медицине",
-                        "key_points": ["Точка 1", "Точка 2"]
+                        "key_points": ["Точка 1", "Точка 2"],
+                        "sources": ["source1.com", "source2.com"],
+                        "confidence_score": 0.8,
+                        "structured_results": {
+                            "domains": {"wikipedia.org": 2, "researchgate.net": 1},
+                            "content_types": {"article": 3},
+                            "total_results": 3,
+                            "average_relevance": 0.75,
+                            "topic_coverage": {
+                                "theoretical": 0.6,
+                                "practical": 0.4,
+                                "historical": 0.2,
+                                "future": 0.8
+                            }
+                        }
                     },
                     "explanation_data": {
+                        "topic": test_topic,  # Добавляем topic для валидации
                         "content": "Подробное объяснение темы ИИ в медицине",
-                        "key_concepts": ["Нейросети", "Машинное обучение"]
+                        "key_concepts": ["Нейросети", "Машинное обучение"],
+                        "examples": ["Пример 1", "Пример 2"],
+                        "difficulty_level": "intermediate"
                     }
                 }
             elif agent_name == "PresentationAgent":
@@ -78,11 +121,16 @@ async def test_individual_agents():
                 test_data = {
                     "topic": test_topic,
                     "synthesis_data": {
+                        "topic": test_topic,  # Добавляем topic
                         "synthesized_content": "Синтезированная информация о ИИ в медицине",
-                        "key_insights": ["Инсайт 1", "Инсайт 2"]
+                        "key_insights": ["Инсайт 1", "Инсайт 2"],
+                        "executive_summary": "Комплексный анализ ИИ в медицине",
+                        "recommendations": ["Рекомендация 1", "Рекомендация 2"],
+                        "patterns": ["Паттерн 1", "Паттерн 2"]
                     },
                     "research_data": {
-                        "summary": "Исследование ИИ в медицине"
+                        "summary": "Исследование ИИ в медицине",
+                        "key_points": ["Точка 1", "Точка 2"]
                     }
                 }
             elif agent_name == "ImageGeneratorAgent":
@@ -113,6 +161,14 @@ async def test_individual_agents():
                     "image_data": {}  # Необязательный
                 }
             elif agent_name == "VideoAgent":
+                # Создаем тестовый аудиофайл если его нет
+                test_audio_path = "output/audio/test_video_audio.mp3"
+                Path(test_audio_path).parent.mkdir(parents=True, exist_ok=True)
+                if not Path(test_audio_path).exists():
+                    # Создаем пустой файл для теста
+                    with open(test_audio_path, 'wb') as f:
+                        f.write(b'fake audio data')
+                
                 # Макет данных от ImageGeneratorAgent и AudioAgent
                 test_data = {
                     "image_data": {
@@ -128,7 +184,7 @@ async def test_individual_agents():
                     },
                     "audio_data": {
                         "audio_file": {
-                            "path": "output/audio/presentation_audio.mp3"
+                            "path": test_audio_path
                         },
                         "timing_markers": [
                             {"slide_number": 1, "time_seconds": 0, "duration_seconds": 10}
@@ -245,10 +301,10 @@ async def test_full_workflow():
         print(f"   Успешность: {'✅' if result.success else '❌'}")
         print(f"   Шагов выполнено: {result.steps_completed}/{result.total_steps}")
         print(f"   Общее время: {result.total_time:.2f}с")
-        print(f"   Откатов: {result.rollbacks}")
+        print(f"   Откатов: {result.rollbacks_performed}")
         
-        if result.average_quality_score is not None:
-            print(f"   Среднее качество: {result.average_quality_score:.3f}")
+        if result.average_quality is not None:
+            print(f"   Среднее качество: {result.average_quality:.3f}")
         
         print("\n💾 Созданные файлы:")
         
@@ -269,9 +325,9 @@ async def test_full_workflow():
                 if len(files) > 3:
                     print(f"     ... и еще {len(files) - 3} файлов")
         
-        if result.success and result.step_results:
+        if result.success and result.agent_results:
             print("\n📈 Качество по шагам:")
-            for step_name, step_result in result.step_results.items():
+            for step_name, step_result in result.agent_results.items():
                 if hasattr(step_result, 'quality_score') and step_result.quality_score is not None:
                     print(f"   {step_name}: {step_result.quality_score:.3f}")
         

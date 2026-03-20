@@ -445,7 +445,8 @@ class PresentationAgent(BaseAgent):
             content = slide.get("content", {})
             
             # Проверяем наличие заголовка
-            if not content.get("title") and not slide.get("title"):
+            slide_title = content.get("title") or slide.get("title")
+            if not slide_title:
                 issues.append(f"Слайд {slide_number}: отсутствует заголовок")
             
             # Проверяем длину текста

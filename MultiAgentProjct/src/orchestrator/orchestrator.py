@@ -9,7 +9,8 @@ from logging import getLogger
 from typing import Any, Dict, List, Optional, Type
 
 from src.agents.base import BaseAgent
-from src.state_manager import StateManager, WorkflowState, AgentStep, WorkflowStatus, QualityThresholds
+from src.state_manager import StateManager, WorkflowState, AgentStep, WorkflowStatus
+from src.state_manager.models import QualityThresholds
 from src.models.agents import AgentResult
 from src.evaluation import QualityEvaluator
 

@@ -101,22 +101,28 @@ class FreeMultiAgentSystem:
         if not self.orchestrator:
             return
         
-        # Конфигурируем каждого агента для бесплатной работы
-        agent_configs = {
-            "research": get_free_agent_config("research"),
-            "explanation": get_free_agent_config("explanation"),
-            "synthesis": get_free_agent_config("synthesis"),
-            "presentation": get_free_agent_config("presentation"),
-            "image_generator": get_free_agent_config("image_generator"),
-            "audio": get_free_agent_config("audio"),
-            "video": get_free_agent_config("video")
-        }
+        # Импортируем агентов
+        from src.agents import (
+            ResearchAgent, ExplanationAgent, SynthesisAgent,
+            PresentationAgent, ImageGeneratorAgent, AudioAgent, VideoAgent
+        )
+        from src.orchestrator.orchestrator import AgentStep
         
-        # Применяем конфигурации
-        for agent_name, config in agent_configs.items():
-            if config:
-                # В реальной системе здесь была бы конфигурация агентов
-                self.logger.info(f"🔧 Агент {agent_name} сконфигурирован для бесплатного режима")
+        # Создаем агентов с бесплатными конфигурациями
+        agents_to_register = [
+            (AgentStep.RESEARCH, ResearchAgent()),
+            (AgentStep.EXPLANATION, ExplanationAgent()),
+            (AgentStep.SYNTHESIS, SynthesisAgent()),
+            (AgentStep.PRESENTATION, PresentationAgent()),
+            (AgentStep.IMAGE_GENERATION, ImageGeneratorAgent()),
+            (AgentStep.AUDIO_GENERATION, AudioAgent()),
+            (AgentStep.VIDEO_GENERATION, VideoAgent())
+        ]
+        
+        # Регистрируем агентов в оркестраторе
+        for step, agent in agents_to_register:
+            self.orchestrator.register_agent(step, agent)
+            self.logger.info(f"🔧 Агент {agent.__class__.__name__} зарегистрирован для шага {step.value}")
     
     def _print_system_info(self):
         """Вывод информации о системе"""
@@ -275,10 +281,22 @@ class FreeMultiAgentSystem:
     
     async def cleanup(self):
         """Очистка ресурсов"""
-        if self.orchestrator:
-            # В реальной системе здесь была бы очистка агентов
-            pass
-        self.logger.info("🧹 Ресурсы системы очищены")
+        try:
+            if self.orchestrator:
+                # Закрываем все HTTP сессии
+                if hasattr(self.orchestrator, '_cleanup_sessions'):
+                    await self.orchestrator._cleanup_sessions()
+                
+                # Очищаем агентов
+                for agent in getattr(self.orchestrator, 'agents', {}).values():
+                    if hasattr(agent, 'cleanup'):
+                        await agent.cleanup()
+                    elif hasattr(agent, 'close'):
+                        await agent.close()
+            
+            self.logger.info("🧹 Ресурсы системы очищены")
+        except Exception as e:
+            self.logger.warning(f"⚠️ Ошибка при очистке ресурсов: {e}")
 
 
 async def main():
@@ -297,15 +315,20 @@ async def main():
     
     while True:
         try:
-            topic = input("\n🎯 Тема: ").strip()
+            # Проверяем есть ли данные для ввода
+            import select
+            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                topic = sys.stdin.readline().strip()
+            else:
+                topic = input("\n🎯 Тема: ").strip()
+            
+            if not topic:  # EOF detected
+                print("\n👋 Завершение работы...")
+                break
             
             if topic.lower() in ['exit', 'выход', 'quit', 'q']:
                 print("👋 Завершение работы...")
                 break
-            
-            if not topic:
-                print("⚠️ Пожалуйста, введите тему")
-                continue
             
             if len(topic) < 3:
                 print("⚠️ Тема слишком короткая (минимум 3 символа)")
@@ -318,15 +341,28 @@ async def main():
             await system.print_result_summary(result)
             
             # Спрашиваем продолжить ли
-            continue_input = input("\n🔄 Продолжить? (y/n): ").strip().lower()
-            if continue_input in ['n', 'no', 'нет', 'exit', 'выход']:
+            try:
+                # Проверяем есть ли данные для ввода
+                if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                    continue_input = sys.stdin.readline().strip().lower()
+                else:
+                    continue_input = input("\n🔄 Продолжить? (y/n): ").strip().lower()
+                
+                if continue_input in ['n', 'no', 'нет', 'exit', 'выход']:
+                    break
+            except EOFError:
+                print("\n👋 Завершение работы...")
                 break
                 
         except KeyboardInterrupt:
             print("\n👋 Работа прервана")
             break
+        except EOFError:
+            print("\n👋 Ввод завершен")
+            break
         except Exception as e:
             print(f"❌ Ошибка: {e}")
+            break
     
     # Очистка
     await system.cleanup()
