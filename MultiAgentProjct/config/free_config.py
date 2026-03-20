@@ -261,7 +261,7 @@ def validate_free_environment() -> Dict[str, Any]:
     try:
         import requests
         response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status != 200:
+        if response.status_code != 200:
             results["warnings"].append("Ollama недоступен - будет использована шаблонизация")
             results["recommendations"].append("Установите и запустите Ollama для лучшего качества текста")
     except:

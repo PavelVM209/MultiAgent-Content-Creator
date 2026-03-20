@@ -9,6 +9,7 @@ import re
 
 from .base import BaseAgent
 from src.models.agents import ValidationResult, AgentConfig
+from src.llm import OllamaClient
 
 
 class ExplanationAgent(BaseAgent):
@@ -39,6 +40,7 @@ class ExplanationAgent(BaseAgent):
                 }
             )
         super().__init__(config)
+        self.ollama_client = OllamaClient()
     
     async def validate_input(self, data: Any) -> ValidationResult:
         """Валидация входных данных"""
@@ -235,6 +237,63 @@ class ExplanationAgent(BaseAgent):
     async def _generate_main_content(self, topic: str, research_data: Dict[str, Any], 
                                    audience: str, style: str) -> str:
         """Генерация основного содержания объяснения"""
+        
+        # Пытаемся использовать Ollama если доступен
+        if self.ollama_client.is_available():
+            ollama_content = await self._generate_with_ollama(topic, research_data, audience, style)
+            if ollama_content:
+                self.logger.info("Сгенерировано объяснение через Ollama")
+                return ollama_content
+        
+        # Fallback на шаблонную генерацию
+        self.logger.info("Используем шаблонную генерацию объяснения")
+        return await self._generate_with_template(topic, research_data, audience, style)
+    
+    async def _generate_with_ollama(self, topic: str, research_data: Dict[str, Any], 
+                                   audience: str, style: str) -> Optional[str]:
+        """Генерация объяснения через Ollama"""
+        try:
+            summary = research_data.get("summary", "")
+            key_points = research_data.get("key_points", [])
+            
+            # Создаем промпт для Ollama
+            prompt = f"""
+Объясни тему: "{topic}"
+
+Исследовательские данные:
+- Summary: {summary}
+- Ключевые точки: {', '.join(key_points[:3])}
+
+Аудитория: {audience}
+Стиль: {style}
+
+Требования:
+1. Создай подробное объяснение (300-800 слов)
+2. Используй понятный язык для аудитории
+3. Включи практические примеры
+4. Структурируй текст: введение, основная часть, заключение
+5. Избегай слишком сложной терминологии (для начинающих)
+
+Ответ:
+"""
+            
+            generated_text = self.ollama_client.generate(
+                prompt=prompt,
+                temperature=0.7,
+                max_tokens=1000
+            )
+            
+            if generated_text and len(generated_text) > 100:
+                return generated_text
+            
+        except Exception as e:
+            self.logger.warning(f"Ошибка при генерации через Ollama: {e}")
+        
+        return None
+    
+    async def _generate_with_template(self, topic: str, research_data: Dict[str, Any], 
+                                     audience: str, style: str) -> str:
+        """Генерация объяснения через шаблоны"""
         summary = research_data.get("summary", "")
         key_points = research_data.get("key_points", [])
         
